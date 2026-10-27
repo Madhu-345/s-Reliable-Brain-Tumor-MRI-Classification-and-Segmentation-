@@ -1,0 +1,346 @@
+# ============================================================
+# Multi-Task Configuration
+# ============================================================
+# Uncertainty-Aware Multi-Task Evidential Learning
+#
+# Joint brain tumor MRI classification and segmentation
+# with uncertainty-aware feature refinement, evidential
+# prediction, calibration, and reliability-based decisions.
+# ============================================================
+
+experiment:
+  name: "multitask"
+  description: "Uncertainty-Aware Multi-Task Evidential Learning"
+  seed: 42
+
+# ============================================================
+# Model
+# ============================================================
+
+model:
+
+  name: "uncertainty_aware_multitask"
+
+  backbone:
+    name: "resnet50"
+    pretrained: true
+    trainable: true
+
+  # Extract feature representations at multiple backbone levels
+  multi_scale:
+    enabled: true
+
+  # ----------------------------------------------------------
+  # Uncertainty-Calibrated Spatial Attention (UCSA)
+  # ----------------------------------------------------------
+
+  ucsa:
+    enabled: true
+
+    base_attention:
+      enabled: true
+
+    uncertainty_map:
+      enabled: true
+
+    uncertainty_modulation:
+      enabled: true
+
+    gamma: 1.0
+
+  # ----------------------------------------------------------
+  # Classification Branch
+  # ----------------------------------------------------------
+
+  classification:
+
+    enabled: true
+
+    evidential: true
+
+    num_classes: 4
+
+    class_names:
+      - "glioma"
+      - "meningioma"
+      - "pituitary"
+      - "no_tumor"
+
+    global_average_pooling: true
+
+  # ----------------------------------------------------------
+  # Segmentation Branch
+  # ----------------------------------------------------------
+
+  segmentation:
+
+    enabled: true
+
+    evidential: true
+
+    # WT / TC / ET
+    num_classes: 3
+
+    regions:
+      - "WT"
+      - "TC"
+      - "ET"
+
+    decoder:
+      type: "multi_scale"
+      progressive_upsampling: true
+      skip_connections: true
+
+# ============================================================
+# Data
+# ============================================================
+
+data:
+
+  classification:
+
+    enabled: true
+
+    image_size: 224
+
+    num_classes: 4
+
+    preprocessing:
+      skull_stripping: true
+      resize: true
+      intensity_normalization: true
+
+    augmentation:
+      enabled: true
+      horizontal_flip: true
+      vertical_flip: false
+      rotation: true
+      mild_intensity_variation: true
+
+  segmentation:
+
+    enabled: true
+
+    dataset: "BraTS2020"
+
+    modalities:
+      - "T1"
+      - "T1ce"
+      - "T2"
+      - "FLAIR"
+
+    regions:
+      - "WT"
+      - "TC"
+      - "ET"
+
+# ============================================================
+# Training
+# ============================================================
+
+training:
+
+  optimizer: "adam"
+
+  learning_rate: 0.0001
+
+  weight_decay: 0.00001
+
+  batch_size: 16
+
+  epochs: 100
+
+  scheduler:
+    name: "cosine_annealing"
+
+  early_stopping:
+    enabled: true
+    monitor: "val_loss"
+    mode: "min"
+
+  # Joint optimization of shared and task-specific components
+  joint_optimization: true
+
+# ============================================================
+# Multi-Objective Loss
+# ============================================================
+
+loss:
+
+  # ----------------------------------------------------------
+  # Evidential Classification Loss
+  # ----------------------------------------------------------
+
+  evidential_classification:
+    enabled: true
+    weight: 1.0
+
+  # ----------------------------------------------------------
+  # Evidential Segmentation Loss
+  # ----------------------------------------------------------
+
+  evidential_segmentation:
+    enabled: true
+    weight: 1.0
+
+  # Dice component inside segmentation objective
+  dice:
+    enabled: true
+    weight: 1.0
+
+  # ----------------------------------------------------------
+  # Dirichlet KL Regularization
+  # ----------------------------------------------------------
+
+  dirichlet_kl:
+    enabled: true
+    weight: 0.1
+
+  # ----------------------------------------------------------
+  # Calibration Loss
+  # ----------------------------------------------------------
+
+  calibration:
+    enabled: true
+    weight: 0.1
+
+  # ----------------------------------------------------------
+  # Attention–Uncertainty Alignment Loss
+  # ----------------------------------------------------------
+
+  attention_uncertainty_alignment:
+    enabled: true
+    weight: 0.1
+
+# ============================================================
+# Reliability and Accept/Abstain Decision
+# ============================================================
+
+reliability:
+
+  enabled: true
+
+  # Classification reliability
+  classification:
+    enabled: true
+    threshold: 0.80
+
+  # Segmentation reliability
+  segmentation:
+    enabled: true
+    threshold: 0.80
+
+  decision:
+    accept_if: "reliability >= threshold"
+    otherwise: "abstain"
+
+# ============================================================
+# Evaluation
+# ============================================================
+
+evaluation:
+
+  # ----------------------------------------------------------
+  # Classification
+  # ----------------------------------------------------------
+
+  classification:
+
+    metrics:
+      - accuracy
+      - precision
+      - recall
+      - specificity
+      - f1
+      - auroc
+
+    uncertainty_metrics:
+      - predictive_uncertainty
+      - ece
+      - nll
+
+  # ----------------------------------------------------------
+  # Segmentation
+  # ----------------------------------------------------------
+
+  segmentation:
+
+    metrics:
+      - dice
+      - iou
+      - precision
+      - recall
+      - hd95
+
+    uncertainty_metrics:
+      - pixel_uncertainty
+      - segmentation_reliability
+
+  # ----------------------------------------------------------
+  # Selective Prediction
+  # ----------------------------------------------------------
+
+  selective_prediction:
+
+    enabled: true
+
+    reliability_thresholds:
+      - 0.50
+      - 0.60
+      - 0.70
+      - 0.80
+      - 0.90
+      - 0.95
+
+    metrics:
+      - coverage
+      - selective_accuracy
+      - selective_risk
+
+# ============================================================
+# Output
+# ============================================================
+
+output:
+
+  directory: "outputs/multitask"
+
+  save_checkpoint: true
+
+  save_best_model: true
+
+  save_metrics: true
+
+  save_predictions: true
+
+  save_classification_probabilities: true
+
+  save_segmentation_masks: true
+
+  save_predictive_uncertainty: true
+
+  save_pixel_uncertainty: true
+
+  save_reliability_scores: true
+
+  save_accept_abstain_decisions: true
+
+# ============================================================
+# Hardware
+# ============================================================
+
+hardware:
+
+  device: "cuda"
+
+  mixed_precision: true
+
+# ============================================================
+# Reproducibility
+# ============================================================
+
+reproducibility:
+
+  seed: 42
+
+  deterministic: true

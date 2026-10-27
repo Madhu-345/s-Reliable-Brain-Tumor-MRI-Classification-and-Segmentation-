@@ -1,0 +1,188 @@
+# ============================================================
+# Classification Configuration
+# ============================================================
+# Uncertainty-Aware Multi-Task Evidential Learning
+#
+# Main configuration for brain tumor MRI classification.
+# ============================================================
+
+experiment:
+  name: "classification"
+  description: "Brain tumor MRI evidential classification"
+  seed: 42
+
+model:
+  name: "uncertainty_aware_multitask"
+  backbone: "resnet50"
+  pretrained: true
+
+  # Multi-scale feature extraction
+  multi_scale: true
+
+  # Uncertainty-Calibrated Spatial Attention
+  ucsa:
+    enabled: true
+    uncertainty_modulation: true
+
+  # Classification branch
+  classification:
+    enabled: true
+    evidential: true
+    num_classes: 4
+
+  # Segmentation branch is disabled for
+  # classification-only experiments
+  segmentation:
+    enabled: false
+
+data:
+  task: "classification"
+
+  image_size: 224
+
+  num_classes: 4
+
+  class_names:
+    - "glioma"
+    - "meningioma"
+    - "pituitary"
+    - "no_tumor"
+
+  preprocessing:
+    skull_stripping: true
+    intensity_normalization: true
+    resize: true
+
+  augmentation:
+    enabled: true
+    horizontal_flip: true
+    vertical_flip: false
+    rotation: true
+    mild_intensity_variation: true
+
+training:
+  optimizer: "adam"
+
+  learning_rate: 0.0001
+
+  weight_decay: 0.00001
+
+  batch_size: 16
+
+  epochs: 100
+
+  scheduler:
+    name: "cosine_annealing"
+
+  early_stopping:
+    enabled: true
+    monitor: "val_loss"
+    mode: "min"
+
+loss:
+  evidential_classification:
+    enabled: true
+    weight: 1.0
+
+  dirichlet_kl:
+    enabled: true
+    weight: 0.1
+
+  calibration:
+    enabled: true
+    weight: 0.1
+
+  attention_uncertainty_alignment:
+    enabled: true
+    weight: 0.1
+
+  evidential_segmentation:
+    enabled: false
+    weight: 0.0
+
+  dice:
+    enabled: false
+    weight: 0.0
+
+reliability:
+  enabled: true
+
+  classification:
+    threshold: 0.80
+
+  decision:
+    accept_if: "reliability >= threshold"
+    otherwise: "abstain"
+
+evaluation:
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - specificity
+    - f1
+    - auroc
+
+  uncertainty:
+    enabled: true
+    metrics:
+      - predictive_uncertainty
+      - ece
+      - nll
+
+  selective_prediction:
+    enabled: true
+
+    thresholds:
+      - 0.50
+      - 0.60
+      - 0.70
+      - 0.80
+      - 0.90
+      - 0.95
+
+    metrics:
+      - coverage
+      - selective_accuracy
+      - selective_risk
+
+datasets:
+  dataset_1:
+    enabled: true
+    name: "Brain MRI Classification Dataset 1"
+    num_images: 7200
+
+  dataset_2:
+    enabled: true
+    name: "Brain MRI Classification Dataset 2"
+    num_images: 3264
+
+  dataset_3:
+    enabled: true
+    name: "Brain MRI Classification Dataset 3"
+    num_images: 1311
+
+output:
+  directory: "outputs/classification"
+
+  save_checkpoint: true
+
+  save_best_model: true
+
+  save_metrics: true
+
+  save_predictions: true
+
+  save_uncertainty: true
+
+  save_reliability: true
+
+hardware:
+  device: "cuda"
+
+  mixed_precision: true
+
+reproducibility:
+  deterministic: true
+
+  seed: 42

@@ -1,0 +1,133 @@
+# ============================================================
+# Ablation: Without Dirichlet KL Regularization
+# ============================================================
+# Uncertainty-Aware Multi-Task Evidential Learning
+#
+# This configuration disables the Dirichlet KL Regularization
+# while retaining all other components of the framework.
+# ============================================================
+
+experiment:
+  name: "ablation_no_kl"
+  description: "Proposed framework without Dirichlet KL Regularization"
+  seed: 42
+
+model:
+  name: "uncertainty_aware_multitask"
+  backbone: "resnet50"
+  pretrained: true
+
+  multi_scale: true
+
+  ucsa:
+    enabled: true
+    uncertainty_modulation: true
+
+  classification:
+    enabled: true
+    evidential: true
+    num_classes: 4
+
+  segmentation:
+    enabled: true
+    evidential: true
+    num_classes: 3
+
+training:
+  optimizer: "adam"
+  learning_rate: 0.0001
+  weight_decay: 0.00001
+  batch_size: 16
+  epochs: 100
+
+  scheduler:
+    name: "cosine_annealing"
+
+  early_stopping:
+    enabled: true
+    monitor: "val_loss"
+    mode: "min"
+
+loss:
+  evidential_classification:
+    enabled: true
+    weight: 1.0
+
+  evidential_segmentation:
+    enabled: true
+    weight: 1.0
+
+  dice:
+    enabled: true
+    weight: 1.0
+
+  dirichlet_kl:
+    enabled: false
+    weight: 0.0
+
+  calibration:
+    enabled: true
+    weight: 0.1
+
+  attention_uncertainty_alignment:
+    enabled: true
+    weight: 0.1
+
+reliability:
+  enabled: true
+
+  classification:
+    threshold: 0.80
+
+  segmentation:
+    threshold: 0.80
+
+  decision:
+    accept_if: "reliability >= threshold"
+    otherwise: "abstain"
+
+data:
+  classification:
+    image_size: 224
+
+  segmentation:
+    dataset: "BraTS2020"
+
+evaluation:
+  classification_metrics:
+    - accuracy
+    - precision
+    - recall
+    - specificity
+    - f1
+    - auroc
+    - ece
+    - nll
+
+  segmentation_metrics:
+    - dice
+    - iou
+    - precision
+    - recall
+    - hd95
+
+  uncertainty_metrics:
+    - predictive_uncertainty
+    - ece
+    - nll
+
+  selective_prediction:
+    enabled: true
+    thresholds:
+      - 0.50
+      - 0.60
+      - 0.70
+      - 0.80
+      - 0.90
+      - 0.95
+
+output:
+  directory: "outputs/ablation_no_kl"
+  save_checkpoint: true
+  save_metrics: true
+  save_predictions: true
